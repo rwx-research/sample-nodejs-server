@@ -1,0 +1,21 @@
+{
+  "name": "@rwx-research/sample-nodejs-server",
+  "private": true,
+  "version": "0.0.1",
+  "description": "This is a simple NodeJS HTTP server for testing.",
+  "main": "index.cjs",
+  "scripts": {
+    "build": "echo '#NoBuild success'",
+    "start": "node index.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rwx-research/sample-nodejs-server.git"
+  },
+  "author": "ReadWriteExecute, Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rwx-research/sample-nodejs-server/issues"
+  },
+  "homepage": "https://github.com/rwx-research/sample-nodejs-server#readme"
+}
