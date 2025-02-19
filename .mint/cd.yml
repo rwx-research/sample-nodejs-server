@@ -4,8 +4,52 @@ on:
       init:
         commit-sha: ${{ event.git.sha }}
 
+concurrency-pools:
+  - id: rwx-research/sample-nodejs-server:deploy
+    capacity: 1
+    on-overflow: queue
+
 tasks:
   - key: deploy
-    run: curl -sL --fail "${DEPLOY_URL}"
+    cache: false
+    run: |
+      curl -s -X POST --fail \
+        -H "Accept: application/json" \
+        -H "Content-Type: application/json" \
+        -H  "Authorization: Bearer ${RENDER_API_KEY}" \
+        --data '{"commitId": "${{ init.commit-sha }}"}' \
+        "https://api.render.com/v1/services/${SERVICE_ID}/deploys" \
+        | jq -r '.id' > $MINT_VALUES/deploy-id
+      echo "Deploy ID: $(cat $MINT_VALUES/deploy-id)"
     env:
-      DEPLOY_URL: "${{ vaults.doug_test.secrets.SAMPLE_NODEJS_SERVER_RENDER_DEPLOY_URL }}&ref=${{ init.commit-sha }}"
+      RENDER_API_KEY: "${{ vaults.doug_test.secrets.SAMPLE_NODEJS_SERVER_RENDER_API_KEY }}"
+      SERVICE_ID: "${{ vaults.doug_test.secrets.SAMPLE_NODEJS_SERVER_RENDER_SERVICE_ID }}"
+
+  - key: wait-for-completion
+    cache: false
+    timeout-minutes: 5
+    run: |
+      echo "Polling for deploy completion..."
+      pending_statuses=(created build_in_progress update_in_progress pre_deploy_in_progress)
+      status=""
+      # mint-breakpoint
+
+      while true; do
+        status=$(curl -s --fail \
+          -H "Accept: application/json" \
+          -H  "Authorization: Bearer ${RENDER_API_KEY}" \
+          "https://api.render.com/v1/services/${SERVICE_ID}/deploys/${DEPLOY_ID}" | jq -r '.status')
+        echo "Status: ${status}"
+
+        if [[ -n "${status}" && ! " ${pending_statuses[*]} " =~ " ${status} " ]]; then
+          break
+        fi
+
+        sleep 2
+      done
+
+      [[ "${status}" == "live" ]] || exit 1
+    env:
+      RENDER_API_KEY: "${{ vaults.doug_test.secrets.SAMPLE_NODEJS_SERVER_RENDER_API_KEY }}"
+      SERVICE_ID: "${{ vaults.doug_test.secrets.SAMPLE_NODEJS_SERVER_RENDER_SERVICE_ID }}"
+      DEPLOY_ID: "${{ tasks.deploy.values.deploy-id }}"
