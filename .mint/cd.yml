@@ -1,0 +1,11 @@
+on:
+  github:
+    push:
+      init:
+        commit-sha: ${{ event.git.sha }}
+
+tasks:
+  - key: deploy
+    run: curl -sL --fail "${DEPLOY_URL}"
+    env:
+      DEPLOY_URL: "${{ vaults.doug_test.secrets.SAMPLE_NODEJS_SERVER_RENDER_DEPLOY_URL }}&ref=${{ init.commit-sha }}"
